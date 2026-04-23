@@ -28,9 +28,23 @@ description: 按 content-brief 写公众号完整文章。当用户说"写文章
 - 不做包装改稿（标题优化、开头重写等由 content-polisher 负责）
 - 不做发布
 
+## 执行模式
+
+| 模式 | 触发方式 | Step 2 行为 |
+|------|---------|------------|
+| 交互模式 | 直接对话调用 | 出标题+大纲，停下来等用户确认 |
+| 自动模式 | 被 writing-hub 串联调用，或用户说"直接写" | 跳过确认，用 brief 大纲 + 评分最高的标题 |
+
 ## 执行流程
 
-### Step 0: 写前门控
+### Step 0: 读取定制配置
+
+读取 `_shared/extend-system.md`，检查项目级和用户级 EXTEND.md 是否存在：
+- 排版参数覆盖（字号、颜色等）
+- 文章类型预设扩展
+- 品牌信息
+
+### Step 0.5: 写前门控
 
 读取 `references/pre-write-checks.md` 中的写前门控清单，检查 brief 的：
 
@@ -51,7 +65,7 @@ description: 按 content-brief 写公众号完整文章。当用户说"写文章
 
 ### Step 2: 阶段一——出标题 + 确认大纲
 
-**标题**：读取 `../_shared/title-and-packaging.md`，按标题 5 大原则生成 3 个候选标题。
+**标题**：读取 `_shared/title-and-packaging.md`，按标题 5 大原则生成 3 个候选标题。
 
 **大纲**：
 - **如果 brief 中包含章节大纲**（通常如此）：直接呈现 brief 中的大纲给用户确认，不重新生成
@@ -73,12 +87,13 @@ description: 按 content-brief 写公众号完整文章。当用户说"写文章
 用户确认标题和大纲后，按大纲逐章节写作。
 
 读取 `references/framework-selection.md`，遵守：
+- 根据文章类型预设对齐所有维度（框架 × 语调 × 配图风格 × 结尾模板）
 - 分段写作法：每章独立交付价值
-- 开头用 `../_shared/hook-and-ending.md` 中的模板
+- 开头用 `_shared/hook-and-ending.md` 中的模板
 - 结尾用同一文件中的模板
 - 遵守去 AI 痕迹规则
 
-读取 `../_shared/wechat-channel-profile.md`，遵守排版规范。
+读取 `_shared/wechat-channel-profile.md`，遵守排版规范。
 
 ### Step 4: 自检
 
@@ -87,9 +102,16 @@ description: 按 content-brief 写公众号完整文章。当用户说"写文章
 
 ### Step 5: 输出
 
-读取 `../_shared/intermediate-format.md` 中 article-draft.md 的格式规范，按格式输出。
+读取 `_shared/intermediate-format.md` 中 article-draft.md 的格式规范，按格式输出。
 
 **article-draft.md 中只包含最终确认的标题**（不是 3 个候选）。3 个候选标题是 Step 2 的交互状态，不写入最终产物。
+
+在 article-draft.md 头部追加文章类型预设信息，供下游 wechat-draft-publisher 读取：
+
+```yaml
+文章预设: deep-insight|story-time|hot-take|how-to|quick-list
+主题色: default|warm|dark
+```
 
 输出到本地文件：`article-draft-<选题关键词>.md`
 
@@ -112,8 +134,9 @@ description: 按 content-brief 写公众号完整文章。当用户说"写文章
 ## Guardrails
 
 - 必须先通过写前门控，核心判断不够硬时不硬写
-- 必须先出标题+确认大纲，用户确认后再写全文，不允许跳过
+- 交互模式下必须先出标题+确认大纲，用户确认后再写全文；自动模式下跳过确认
 - brief 中已有章节大纲时，直接使用，不重新生成
+- 优先使用 EXTEND.md 中的定制配置（排版参数、品牌信息、预设扩展）
 - 正文每段不超过 5 行，每句不超过 25 字
 - 标题 3 个候选必须符合 5 大原则之一
 - 写完全文后做一遍去AI痕迹检查
